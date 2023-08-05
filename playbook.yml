@@ -1,0 +1,47 @@
+---
+- name: Mise à jour et nettoyage du système
+  hosts: servers
+  become: yes
+
+  tasks:
+    - name: Mise à jour du cache des paquets
+      apt:
+        update_cache: yes
+      when: ansible_os_family == 'Debian'
+
+    - name: Installation d'aptitude (uniquement si nécessaire)
+      apt:
+        name: aptitude
+        state: present
+      when: ansible_os_family == 'Debian'
+
+    - name: Mise à jour du système
+      package:
+        name: '*'
+        state: latest
+      when: ansible_os_family == 'Debian'
+
+    - name: Nettoyage du cache des paquets
+      apt:
+        autoclean: yes
+      when: ansible_os_family == 'Debian'
+
+    - name: Suppression des paquets inutilisés
+      apt:
+        autoremove: yes
+      when: ansible_os_family == 'Debian'
+
+    - name: Control redemarrage requis
+      shell: "[ -f /var/run/reboot-required ]"
+      failed_when: False
+      register: reboot_required
+      changed_when: reboot_required.rc == 0
+      notify: reboot
+      when: ansible_os_family == "Debian"
+      ignore_errors: yes
+
+  handlers:
+    - name: reboot
+      command: shutdown -r 1 "A system reboot triggered"
+      async: 0
+
